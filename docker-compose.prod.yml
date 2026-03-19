@@ -25,11 +25,6 @@ services:
     depends_on:
       - backend
 
-volumes:
-  pgdata:
-  caddy_data:
-  caddy_config:
-
   caddy:
     image: caddy:2-alpine
     restart: always
@@ -45,3 +40,8 @@ volumes:
     depends_on:
       - frontend
       - backend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
