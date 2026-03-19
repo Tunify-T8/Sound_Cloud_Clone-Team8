@@ -78,6 +78,8 @@ jobs:
             BACKEND_URL=${{ secrets.BACKEND_URL }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
             EOF
 
             # Deploy with production compose
