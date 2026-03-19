@@ -8,6 +8,11 @@ services:
       POSTGRES_DB: soundcloud
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soundcloud -d soundcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     # No ports exposed — only backend talks to db internally
 
   backend:
@@ -17,7 +22,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     image: amirdiaa/soundcloud-frontend:latest
