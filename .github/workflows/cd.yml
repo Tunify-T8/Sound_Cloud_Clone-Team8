@@ -54,7 +54,7 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USERNAME }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          source: docker-compose.prod.yml
+          source: "docker-compose.prod.yml,Caddyfile"
           target: ~/app
 
       - name: Deploy on Azure VM
@@ -77,6 +77,7 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             BACKEND_URL=${{ secrets.BACKEND_URL }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
             EOF
 
             # Deploy with production compose

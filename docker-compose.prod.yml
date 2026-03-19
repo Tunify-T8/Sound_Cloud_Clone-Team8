@@ -13,8 +13,6 @@ services:
   backend:
     image: amirdiaa/soundcloud-backend:latest
     restart: always
-    ports:
-      - "3000:3000"
     environment:
       DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
@@ -24,10 +22,26 @@ services:
   frontend:
     image: amirdiaa/soundcloud-frontend:latest
     restart: always
-    ports:
-      - "80:80"
     depends_on:
       - backend
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
