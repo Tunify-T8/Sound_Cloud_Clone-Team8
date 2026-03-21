@@ -26,12 +26,12 @@ jobs:
           docker build \
             --build-arg VITE_USE_MOCK=false \
             --build-arg VITE_REAL_API_URL=${{ secrets.BACKEND_URL }} \
+            --build-arg VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }} \
             -t ${{ env.DOCKERHUB_FRONTEND }}:latest \
             -t ${{ env.DOCKERHUB_FRONTEND }}:${{ github.sha }} \
             ./frontend
           docker push ${{ env.DOCKERHUB_FRONTEND }}:latest
           docker push ${{ env.DOCKERHUB_FRONTEND }}:${{ github.sha }}
-
       - name: Build and push backend
         run: |
           docker build \
