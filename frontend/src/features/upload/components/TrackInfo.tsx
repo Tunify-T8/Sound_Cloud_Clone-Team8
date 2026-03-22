@@ -4,10 +4,10 @@ import type { TogglesState } from "../types";
 import { clearAudioSource } from "../../../store/AudioSourceSlice";
 import UploadSuccessScreen from "./UploadSuccessScreen";
 import axios from "axios";
+import axiosInstance from "@/features/auth/services/axiosInstance";
 import { SiSoundcloud } from "react-icons/si";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "../../../app/hooks"; 
-import { BASE_URL } from "../../../config/env.ts";
 
 function Toggle({ enabled, onChange }: ToggleProps) {
   return (
@@ -19,6 +19,7 @@ function Toggle({ enabled, onChange }: ToggleProps) {
     </div>
   );
 }
+
 function InfoIcon() {
   return (
     <svg className="ml-1" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
@@ -98,7 +99,6 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
     insights: true,
   });
 
-  // ── NEW: data-shape state (no UI changes) ────────────────────────────────────
   const [geoMode, setGeoMode] = useState<"worldwide" | "exclusive" | "blocked">("worldwide");
   const [regions] = useState<string[]>([]);
   const [contentWarning, setContentWarning] = useState(false);
@@ -116,7 +116,8 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const privacyRef     = useRef<string>("public");
 
-  // Auto-start: fetch the audio blob as soon as TrackInfo mounts
+  // Auto-start: fetch the audio blob from the local object URL
+  // Uses raw axios (not axiosInstance) because source.url is a local blob URL, not the API
   useEffect(() => {
     if (!source?.url) return;
     let cancelled = false;
@@ -192,18 +193,17 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Compress image via canvas before encoding to keep MockAPI payload small
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
-      const MAX_DIM = 400; // cap at 400x400 for MockAPI
+      const MAX_DIM = 400;
       const scale = Math.min(MAX_DIM / img.width, MAX_DIM / img.height, 1);
       const canvas = document.createElement("canvas");
       canvas.width  = Math.round(img.width  * scale);
       canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const compressed = canvas.toDataURL("image/jpeg", 0.7); // 70% quality JPEG
+      const compressed = canvas.toDataURL("image/jpeg", 0.7);
       setArtworkPreview(compressed);
       artworkBase64Ref.current = compressed;
       URL.revokeObjectURL(objectUrl);
@@ -240,8 +240,8 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
     try {
       const rawGenre = genreRef.current?.value?.toLowerCase().trim() ?? "";
 
-      // ── Step 1: POST metadata → get trackId ─────────────────────
-      const { data: track } = await axios.post(`${BASE_URL}/tracks`, {
+      // ── Step 1: POST metadata → get trackId ─────────────────────────────────
+      const { data: track } = await axiosInstance.post("/tracks", {
         title:               titleRef.current?.value || "Untitled",
         genre:               GENRE_MAP[rawGenre] ?? rawGenre,
         tags:                tagsRef.current?.value ? [tagsRef.current.value] : [],
@@ -251,30 +251,41 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
                                ? artistsRef.current.value.split(",").map(a => a.trim())
                                : [],
         availability:        { type: geoMode, regions },
-        licensing:           license === "all"
-                               ? { type: "all_rights_reserved", allowAttribution: false, nonCommercial: false, noDerivatives: false, shareAlike: false }
-                               : { type: "creative_commons", ...ccOptions },
         scheduledReleaseDate: null,
-        contentWarning:      contentWarning,
+        contentWarning,
       });
 
       const { trackId } = track;
       console.log("Track created:", trackId);
 
-      // ── Step 2: POST audio binary to /tracks/{trackId}/audio ────
+      // ── Step 2: POST audio to /tracks/{trackId}/audio ────────────────────────
       if (audioBlobRef.current) {
         const mimeType = audioBlobRef.current.type || "audio/wav";
         const ext = mimeType.split("/")[1] ?? "wav";
-        const fileName = source?.kind === "file" ? (source.name ?? `audio.${ext}`) : `recording.${ext}`;
+        const audioFileName = source?.kind === "file" ? (source.name ?? `audio.${ext}`) : `recording.${ext}`;
 
-        const formData = new FormData();
-        formData.append("audio", audioBlobRef.current, fileName);
+        const audioForm = new FormData();
+        audioForm.append("audio", audioBlobRef.current, audioFileName);
 
-        await axios.post(`${BASE_URL}/tracks/${trackId}/audio`, formData, {
+        await axiosInstance.post(`/tracks/${trackId}/audio`, audioForm, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
         console.log("Audio uploaded for track:", trackId);
+      }
+
+      // ── Step 3: PATCH artwork to /tracks/{trackId} ───────────────────────────
+      if (artworkBase64Ref.current) {
+        const artworkBlob = await fetch(artworkBase64Ref.current).then(r => r.blob());
+
+        const artworkForm = new FormData();
+        artworkForm.append("artwork", artworkBlob, "artwork.jpg");
+
+        await axiosInstance.patch(`/tracks/${trackId}`, artworkForm, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        console.log("Artwork uploaded for track:", trackId);
       }
 
       setUploadDone(true);
@@ -568,7 +579,6 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
                 <label className="text-sm font-bold text-white block mb-1">Contains explicit content</label>
                 <p className="text-sm text-[#666] mb-3">Please check this if your track contains explicit content.</p>
                 <label className="flex items-center gap-3 cursor-pointer">
-                  {/* ✅ wired to boolean state */}
                   <input
                     type="checkbox"
                     className="w-4 h-4 accent-white"
@@ -645,7 +655,6 @@ export default function TrackInfoPage({ onBack }: { onBack?: () => void }) {
                         name="geo"
                         defaultChecked={opt === "Worldwide"}
                         className="w-4 h-4 accent-white"
-                        // ✅ wired to geoMode state
                         onChange={() => setGeoMode(
                           opt === "Worldwide" ? "worldwide" :
                           opt === "Exclusive regions" ? "exclusive" : "blocked"
