@@ -15,3 +15,6 @@ createRoot(document.getElementById('root')!).render(
     </GoogleOAuthProvider>    </Provider>
   </StrictMode>,
 )
+console.log('VITE_GOOGLE_CLIENT_ID', import.meta.env.VITE_GOOGLE_CLIENT_ID);
+console.log('VITE_GOOGLE_REDIRECT_URI', import.meta.env.VITE_GOOGLE_REDIRECT_URI);
+
