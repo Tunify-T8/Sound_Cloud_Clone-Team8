@@ -27,6 +27,8 @@ jobs:
             --build-arg VITE_USE_MOCK=false \
             --build-arg VITE_REAL_API_URL=${{ secrets.BACKEND_URL }} \
             --build-arg VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }} \
+            --build-arg VITE_GOOGLE_CLIENT_ID=${{secrets.VITE_GOOGLE_CLIENT_ID}} \
+            --build-arg VITE_GOOGLE_REDIRECT_URI=${{secrets.VITE_GOOGLE_REDIRECT_URI}} \
             -t ${{ env.DOCKERHUB_FRONTEND }}:latest \
             -t ${{ env.DOCKERHUB_FRONTEND }}:${{ github.sha }} \
             ./frontend
