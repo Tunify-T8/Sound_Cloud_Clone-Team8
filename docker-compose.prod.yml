@@ -21,6 +21,24 @@ services:
     image: redis:7-alpine
     restart: always
 
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
   backend:
     image: amirdiaa/soundcloud-backend:latest
     restart: always
@@ -28,9 +46,12 @@ services:
       - .env
     environment:
       REDIS_HOST: redis
+      OPENSEARCH_NODE: http://opensearch:9200
     depends_on:
       db:
         condition: service_healthy
+      opensearch:
+        condition: service_started
 
   frontend:
     image: amirdiaa/soundcloud-frontend:latest
@@ -56,5 +77,6 @@ services:
 
 volumes:
   pgdata:
+  opensearch_data:
   caddy_data:
   caddy_config:
