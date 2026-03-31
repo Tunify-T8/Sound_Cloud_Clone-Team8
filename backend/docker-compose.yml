@@ -19,27 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  opensearch:
-    image: opensearchproject/opensearch:latest
-    container_name: soundcloud_opensearch
-    restart: always
-    environment:
-      - discovery.type=single-node
-      - plugins.security.disabled=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    ports:
-      - '9200:9200'
-    volumes:
-      - opensearch_data:/usr/share/opensearch/data
-
   api:
     build:
       context: .
@@ -50,15 +29,10 @@ services:
       - '3000:3000'
     env_file:
       - .env
-    environment:
-      OPENSEARCH_NODE: http://opensearch:9200
     command: sh -c "npx prisma db push && node dist/src/main.js"
     depends_on:
       db:
         condition: service_healthy
-      opensearch:
-        condition: service_started
 
 volumes:
   postgres_data:
-  opensearch_data:
