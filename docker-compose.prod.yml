@@ -26,6 +26,11 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
     ulimits:
       memlock:
         soft: -1
@@ -35,6 +40,16 @@ services:
         hard: 65536
     volumes:
       - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9200 && printf \"GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && head -n 1 <&3 | grep -q \"200\"'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   backend:
     image: amirdiaa/soundcloud-backend:latest
@@ -48,7 +63,7 @@ services:
       db:
         condition: service_healthy
       opensearch:
-        condition: service_started
+        condition: service_healthy
 
   frontend:
     image: amirdiaa/soundcloud-frontend:latest
