@@ -24,6 +24,8 @@ services:
   opensearch:
     image: opensearchproject/opensearch:3.5.0
     restart: always
+    env_file:
+      - .env
     environment:
       - discovery.type=single-node
       - DISABLE_INSTALL_DEMO_CONFIG=true
