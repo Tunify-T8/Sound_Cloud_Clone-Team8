@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
+
 import '../../domain/entities/track_metadata.dart';
+
+part 'finalize_track_metadata_request_dto_helpers.dart';
 
 class FinalizeTrackMetadataRequestDto {
   final String trackId;
@@ -72,8 +75,10 @@ class FinalizeTrackMetadataRequestDto {
         .toLowerCase()
         .replaceAll(' ', '_');
 
-    final genreValue =
-        '${normalizedCategory.isEmpty ? 'music' : normalizedCategory}_${normalizedSubGenre.isEmpty ? 'hiphop' : normalizedSubGenre}';
+    final genreValue = _buildGenreValue(
+      category: normalizedCategory,
+      subGenre: normalizedSubGenre,
+    );
 
     return FinalizeTrackMetadataRequestDto(
       trackId: trackId,
@@ -82,7 +87,10 @@ class FinalizeTrackMetadataRequestDto {
       tags: metadata.tags,
       description: metadata.description,
       privacy: metadata.privacy,
-      artists: metadata.artists,
+      artists: metadata.artists
+          .map((artist) => artist.trim())
+          .where((artist) => artist.isNotEmpty)
+          .toList(),
       artworkPath: metadata.artworkPath,
       recordLabel: metadata.recordLabel,
       publisher: metadata.publisher,
@@ -107,38 +115,8 @@ class FinalizeTrackMetadataRequestDto {
     );
   }
 
-  Future<FormData> toFormData() async {
-    return FormData.fromMap({
-      'trackId': trackId,
-      'title': title,
-      'genre': genre,
-      'tags': tags,
-      'description': description,
-      'privacy': privacy,
-      'artists': artists,
-      'recordLabel': recordLabel,
-      'publisher': publisher,
-      'isrc': isrc,
-      'pLine': pLine,
-      'contentWarning': contentWarning,
-      if (scheduledReleaseDate != null)
-        'scheduledReleaseDate': scheduledReleaseDate!.toIso8601String(),
-      'availability[type]': availabilityType,
-      'availability[regions]': availabilityRegions,
-      'licensing[type]': licensingType,
-      'licensing[allowAttribution]': allowAttribution,
-      'licensing[nonCommercial]': nonCommercial,
-      'licensing[noDerivatives]': noDerivatives,
-      'licensing[shareAlike]': shareAlike,
-      'permissions[enableDirectDownloads]': enableDirectDownloads,
-      'permissions[enableOfflineListening]': enableOfflineListening,
-      'permissions[includeInRSS]': includeInRss,
-      'permissions[displayEmbedCode]': displayEmbedCode,
-      'permissions[enableAppPlayback]': enableAppPlayback,
-      if (artworkPath != null &&
-          artworkPath!.isNotEmpty &&
-          !artworkPath!.startsWith('http'))
-        'artwork': await MultipartFile.fromFile(artworkPath!),
-    });
-  }
+  bool get hasLocalArtwork =>
+      artworkPath != null &&
+      artworkPath!.isNotEmpty &&
+      !artworkPath!.startsWith('http');
 }

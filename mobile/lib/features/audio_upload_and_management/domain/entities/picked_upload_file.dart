@@ -1,3 +1,7 @@
+// Upload Feature Guide:
+// Purpose: Domain model used by the upload feature to keep business data independent from API shapes.
+// Used by: mock_upload_repository_impl, real_upload_repository_impl, and 7 more upload files.
+// Concerns: Multi-format support.
 class PickedUploadFile {
   final String name;
   final String path;

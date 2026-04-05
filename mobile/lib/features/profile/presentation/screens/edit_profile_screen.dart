@@ -21,7 +21,10 @@ class EditProfileScreen extends StatefulWidget {
   final File? coverImage;
   final String? instagram;
   final String? twitter;
-  final String? website;
+  final String? youtube;
+  final String? spotify;
+  final String? tiktok;
+  final String? soundcloud;
   final String userType;
   final String? profileImageUrl;
   final String? coverImageUrl; //3lshan yfdal shayef el soora
@@ -36,7 +39,10 @@ class EditProfileScreen extends StatefulWidget {
     this.coverImage,
     this.instagram,
     this.twitter,
-    this.website,
+    this.youtube,
+    this.spotify,
+    this.tiktok,
+    this.soundcloud,
     this.profileImageUrl,
     this.coverImageUrl,
     this.userType = 'ARTIST',
@@ -55,6 +61,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /////to have editscreen up to date with images
   String? profileImageUrl;
   String? coverImageUrl;
+  //// Track original image states to detect changes
+  File? _originalProfileImage;
+  File? _originalCoverImage;
+  String? _originalProfileImageUrl;
+  String? _originalCoverImageUrl;
   //// 3lshan amsa7 el sa7
   bool _profileImageDeleted = false;
   bool _coverImageDeleted = false;
@@ -69,7 +80,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _countryController;
   late final TextEditingController _instagramController;
   late final TextEditingController _twitterController;
-  late final TextEditingController _websiteController;
+  late final TextEditingController _youtubeController;
+  late final TextEditingController _spotifyController;
+  late final TextEditingController _tiktokController;
+  late final TextEditingController _soundcloudController;
 
   bool _hasChanges =
       false; //need to track to use when you save and when you try to exit withoiut saving
@@ -83,11 +97,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: widget.bio);
     _instagramController = TextEditingController(text: widget.instagram ?? '');
     _twitterController = TextEditingController(text: widget.twitter ?? '');
-    _websiteController = TextEditingController(text: widget.website ?? '');
+    _youtubeController = TextEditingController(text: widget.youtube ?? '');
+    _spotifyController = TextEditingController(text: widget.spotify ?? '');
+    _tiktokController = TextEditingController(text: widget.tiktok ?? '');
+    _soundcloudController = TextEditingController(text: widget.soundcloud ?? '');
     profileImage = widget.profileImage;
     coverImage = widget.coverImage;
     profileImageUrl = widget.profileImageUrl;
     coverImageUrl = widget.coverImageUrl;
+    // Store originals to detect changes
+    _originalProfileImage = widget.profileImage;
+    _originalCoverImage = widget.coverImage;
+    _originalProfileImageUrl = widget.profileImageUrl;
+    _originalCoverImageUrl = widget.coverImageUrl;
     _isArtist = widget.userType == 'ARTIST';
   }
 
@@ -100,7 +122,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController.dispose();
     _instagramController.dispose();
     _twitterController.dispose();
-    _websiteController.dispose();
+    _youtubeController.dispose();
+    _spotifyController.dispose();
+    _tiktokController.dispose();
+    _soundcloudController.dispose();
     super.dispose();
   }
 
@@ -169,24 +194,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           String? profileUrl;
           String? coverUrl;
 
-          if (profileImage != null) {
+          // Profile image: only upload if it's a new file (changed by user)
+          final profileChanged = profileImage != null &&
+              profileImage?.path != _originalProfileImage?.path;
+          if (profileChanged) {
             profileUrl = await _resolveSavedImagePath(
               profileImage,
               fallbackFailureMessage:
                   'Profile image upload failed, so we saved the local image instead.',
             );
           } else if (_profileImageDeleted) {
-            profileUrl = ''; // says "deleted"
+            profileUrl = ''; // Marked as deleted
+          } else {
+            profileUrl = _originalProfileImageUrl; // Keep original URL
           }
 
-          if (coverImage != null) {
+          // Cover image: only upload if it's a new file (changed by user)
+          final coverChanged = coverImage != null &&
+              coverImage?.path != _originalCoverImage?.path;
+          if (coverChanged) {
             coverUrl = await _resolveSavedImagePath(
               coverImage,
               fallbackFailureMessage:
                   'Cover image upload failed, so we saved the local image instead.',
             );
           } else if (_coverImageDeleted) {
-            coverUrl = ''; // says "deleted"
+            coverUrl = ''; // Marked as deleted
+          } else {
+            coverUrl = _originalCoverImageUrl; // Keep original URL
           }
 
           if (!context.mounted) return;
@@ -206,9 +241,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               twitter: _twitterController.text.isEmpty
                   ? null
                   : _twitterController.text,
-              website: _websiteController.text.isEmpty
+              youtube: _youtubeController.text.isEmpty
                   ? null
-                  : _websiteController.text,
+                  : _youtubeController.text,
+              spotify: _spotifyController.text.isEmpty
+                  ? null
+                  : _spotifyController.text,
+              tiktok: _tiktokController.text.isEmpty
+                  ? null
+                  : _tiktokController.text,
+              soundcloud: _soundcloudController.text.isEmpty
+                  ? null
+                  : _soundcloudController.text,
               userType: _isArtist ? 'ARTIST' : 'LISTENER',
               visibility:
                   'PUBLIC', // carried over as is, edit screen doesn't change this
@@ -303,7 +347,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget buildBody() {
-    //a scrollable bode: images(top),fields (bottom)
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,18 +359,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onCoverPick: (source) => pickImage(
               isCover: true,
               source: source,
-            ), //8yrataha 3lshan ta5od camera aw gallery
+            ), 
             onProfilePick: (source) =>
                 pickImage(isCover: false, source: source),
             onCoverDelete: () => setState(() {
-              // to delete
               coverImage = null;
               coverImageUrl = null;
               _coverImageDeleted = true;
               _hasChanges = true;
             }),
             onProfileDelete: () => setState(() {
-              // to delete
               profileImage = null;
               profileImageUrl = null;
               _profileImageDeleted = true;
@@ -357,7 +398,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           EditProfileLinks(
             instagramController: _instagramController,
             twitterController: _twitterController,
-            websiteController: _websiteController,
+            youtubeController: _youtubeController,
+            spotifyController: _spotifyController,
+            tiktokController: _tiktokController,
+            soundcloudController: _soundcloudController,
             onChanged: () => setState(() => _hasChanges = true),
           ),
           buildAccountTypeToggle(), //is artist aw listener

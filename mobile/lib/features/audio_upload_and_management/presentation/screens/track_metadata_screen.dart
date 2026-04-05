@@ -1,20 +1,28 @@
+// Upload Feature Guide:
+// Purpose: Main metadata editor screen used for both new uploads and editing existing tracks.
+// Used by: upload_flow_controller, edit_track_screen, upload_entry_screen
+// Concerns: Metadata engine.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/upload_item.dart';
 import '../controllers/track_metadata_form_controllers.dart';
 import '../providers/library_uploads_provider.dart';
+import '../providers/track_detail_item_provider.dart';
+import '../providers/track_detail_waveform_provider.dart';
 import '../providers/track_metadata_provider.dart';
 import '../providers/track_metadata_tab_provider.dart';
 import '../providers/upload_provider.dart';
 import '../providers/upload_repository_provider.dart';
-import 'track_metadata_screen_utils.dart';
 import '../widgets/metadata/save_metadata_footer.dart';
 import '../widgets/metadata/track_metadata_body.dart';
 import '../widgets/metadata/track_metadata_cancel_dialog.dart';
 import '../widgets/metadata/track_metadata_delete_dialog.dart';
 import '../widgets/metadata/track_metadata_header.dart';
 import '../widgets/sheets/track_checklist_sheet.dart';
+import 'track_metadata_screen_utils.dart';
+
+part 'track_metadata_screen_actions.dart';
 
 class TrackMetadataScreen extends ConsumerStatefulWidget {
   const TrackMetadataScreen({
@@ -134,94 +142,5 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _pickReleaseDate() async {
-    final state = ref.read(trackMetadataProvider);
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: state.scheduledReleaseDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2035),
-      builder: (_, child) => Theme(data: ThemeData.dark(), child: child!),
-    );
-    if (selected != null) {
-      ref
-          .read(trackMetadataProvider.notifier)
-          .setScheduledReleaseDate(selected);
-    }
-  }
-
-  Future<void> _handleSave() async {
-    final notifier = ref.read(trackMetadataProvider.notifier);
-    final success = widget.isEditMode
-        ? await notifier.saveForEdit(widget.trackId)
-        : await notifier.saveForNewUpload(widget.trackId);
-
-    if (!success || !mounted) return;
-
-    if (widget.isEditMode) {
-      await ref.read(libraryUploadsProvider.notifier).refresh();
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop(true);
-    }
-  }
-
-  Future<void> _handleDelete() async {
-    final item = widget.existingItem;
-    if (!widget.isEditMode || item == null) return;
-
-    if (await confirmTrackMetadataDeletion(context, item.title)) {
-      await ref.read(libraryUploadsProvider.notifier).deleteTrack(item.id);
-      if (mounted) Navigator.of(context).pop(true);
-    }
-  }
-
-  Future<void> _handleCancel() async {
-    if (widget.isEditMode) {
-      Navigator.of(context).pop();
-      return;
-    }
-
-    final shouldCancel = await confirmTrackMetadataCancel(context);
-    if (!shouldCancel || !mounted) return;
-
-    await ref.read(uploadProvider.notifier).cancelCurrentUpload();
-
-    try {
-      await ref.read(uploadRepositoryProvider).deleteTrack(widget.trackId);
-    } catch (_) {
-      // Best-effort cleanup: still leave the flow if local draft state exists.
-    }
-
-    ref.read(uploadProvider.notifier).discardDraft();
-    ref.invalidate(trackMetadataProvider);
-
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  Future<void> _handleInlineUploadCancel() async {
-    final shouldCancel = await confirmTrackMetadataCancel(context);
-    if (!shouldCancel || !mounted) return;
-
-    final restoredPreviousUpload = await ref
-        .read(uploadProvider.notifier)
-        .cancelCurrentUpload();
-    if (restoredPreviousUpload || widget.isEditMode || !mounted) return;
-
-    try {
-      await ref.read(uploadRepositoryProvider).deleteTrack(widget.trackId);
-    } catch (_) {
-      // Best-effort cleanup for partially created drafts.
-    }
-
-    ref.read(uploadProvider.notifier).discardDraft();
-    ref.invalidate(trackMetadataProvider);
-
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
   }
 }

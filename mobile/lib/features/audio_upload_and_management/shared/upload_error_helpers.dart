@@ -1,3 +1,7 @@
+// Upload Feature Guide:
+// Purpose: Shared helper used across multiple upload subflows.
+// Used by: library_uploads_api, mock_library_uploads_api, upload_api, and 11 more upload files.
+// Concerns: Multi-format support.
 import 'dart:async';
 import 'dart:io';
 
@@ -92,10 +96,10 @@ String _stateMessage(StateError error, String fallback) {
   if (message.contains('audio must be uploaded')) {
     return 'Finish uploading the audio file before saving track details.';
   }
-  if (message.contains('cloudinary failed to delete')) {
-    return 'We could not remove the cloud files right now. Please try again.';
+  if (message.contains('failed to delete asset')) {
+    return 'We could not remove the uploaded files right now. Please try again.';
   }
-  if (message.contains('cloudinary is not configured')) {
+  if (message.contains('uploads are not configured')) {
     return 'Uploads are not available right now. Please try again later.';
   }
   return fallback;
