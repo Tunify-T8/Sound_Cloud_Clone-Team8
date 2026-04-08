@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: soundcloud
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: soundcloud
-    ports:
-      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,6 +18,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   opensearch:
     image: opensearchproject/opensearch:3.5.0
@@ -57,19 +60,33 @@ services:
     env_file:
       - .env
     environment:
+      DATABASE_URL: postgresql://soundcloud:${POSTGRES_PASSWORD}@db:5432/soundcloud
+      PORT: 3000
       REDIS_HOST: redis
       OPENSEARCH_NODE: http://opensearch:9200
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       opensearch:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   frontend:
     image: amirdiaa/soundcloud-frontend:latest
     restart: always
-    depends_on:
-      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   caddy:
     image: caddy:2-alpine
@@ -84,8 +101,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
