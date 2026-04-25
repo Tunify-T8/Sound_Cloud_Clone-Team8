@@ -65,7 +65,7 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USERNAME }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile"
+          source: "docker-compose.prod.yml,docker-compose.monitoring.yml,Caddyfile,monitoring"
           target: ~/app
 
       - name: Deploy on Azure VM
@@ -88,17 +88,20 @@ jobs:
             BACKEND_URL=${{ secrets.BACKEND_URL }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
+            GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
+            GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
             ${{ secrets.BACKEND_ENV_VARS }}
             EOF
 
-            # Deploy with production compose
-            docker compose -f docker-compose.prod.yml up -d --force-recreate
+            # Deploy app + monitoring stack
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d --force-recreate
 
-            for service in db redis opensearch backend frontend caddy; do
+            for service in db redis opensearch backend frontend caddy node-exporter prometheus grafana; do
               timeout=180
 
               while [ "$timeout" -gt 0 ]; do
-                container_id="$(docker compose -f docker-compose.prod.yml ps -q "$service")"
+                container_id="$(docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps -q "$service")"
 
                 if [ -n "$container_id" ]; then
                   status="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
@@ -110,7 +113,7 @@ jobs:
 
                   if [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
                     echo "Service $service is $status during deployment"
-                    docker compose -f docker-compose.prod.yml logs --no-color --tail=100 "$service" || true
+                    docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --no-color --tail=100 "$service" || true
                     exit 1
                   fi
                 fi
@@ -121,29 +124,29 @@ jobs:
 
               if [ "$timeout" -le 0 ]; then
                 echo "Timed out waiting for $service to become ready"
-                docker compose -f docker-compose.prod.yml logs --no-color --tail=100 "$service" || true
+                docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --no-color --tail=100 "$service" || true
                 exit 1
               fi
             done
 
             # Run database migrations
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml exec -T backend npx prisma migrate deploy
 
-            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps
 
-            for service in db redis opensearch backend frontend caddy; do
-              container_id="$(docker compose -f docker-compose.prod.yml ps -q "$service")"
+            for service in db redis opensearch backend frontend caddy node-exporter prometheus grafana; do
+              container_id="$(docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps -q "$service")"
 
               if [ -z "$container_id" ]; then
                 echo "Service $service does not have a container after deployment"
-                docker compose -f docker-compose.prod.yml logs --no-color --tail=100 "$service" || true
+                docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --no-color --tail=100 "$service" || true
                 exit 1
               fi
 
               status="$(docker inspect -f '{{.State.Status}}' "$container_id")"
               if [ "$status" != "running" ]; then
                 echo "Service $service is $status after deployment"
-                docker compose -f docker-compose.prod.yml logs --no-color --tail=100 "$service" || true
+                docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --no-color --tail=100 "$service" || true
                 exit 1
               fi
             done

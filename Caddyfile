@@ -1,5 +1,9 @@
 {$DOMAIN_NAME} {
-    handle /socket.io* {
+    handle /notifications/socket.io* {
+        reverse_proxy backend:3000
+    }
+
+    handle /conversations/socket.io* {
         reverse_proxy backend:3000
     }
 
