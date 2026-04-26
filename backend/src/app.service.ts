@@ -1,14 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class AppService implements OnModuleInit {
-  private readonly logger = new Logger(AppService.name);
-
+export class AppService {
   getHello(): string {
     return 'Hello World!';
-  }
-
-  onModuleInit(): void {
-    this.logger.log('Hello World from backend startup');
   }
 }

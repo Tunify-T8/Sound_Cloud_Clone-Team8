@@ -32,7 +32,6 @@ RUN apk add --no-cache ffmpeg
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-RUN npm install --no-save prisma@7.4.2
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
@@ -42,4 +41,4 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["node", "dist/src/main.js"]
