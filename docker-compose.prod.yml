@@ -71,6 +71,7 @@ services:
       - 8.8.4.4
     extra_hosts:
       - "oauth2.googleapis.com:192.178.211.95"
+      - "www.googleapis.com"
     depends_on:
       db:
         condition: service_healthy
