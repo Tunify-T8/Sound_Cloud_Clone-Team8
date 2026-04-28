@@ -126,6 +126,8 @@ jobs:
               fi
             done
 
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml exec -T backend node -e "const dns = require('dns'); const https = require('https'); dns.lookup('oauth2.googleapis.com', { family: 4 }, (dnsErr, address) => { if (dnsErr) { console.error('Failed to resolve oauth2.googleapis.com', dnsErr); process.exit(1); } console.log('Resolved oauth2.googleapis.com to', address); const req = https.request('https://oauth2.googleapis.com/token', { method: 'POST', timeout: 10000 }, (res) => { console.log('Google OAuth endpoint reachable with HTTP', res.statusCode); res.resume(); process.exit(0); }); req.on('timeout', () => { console.error('Timed out reaching Google OAuth endpoint'); req.destroy(new Error('timeout')); }); req.on('error', (err) => { console.error('Failed to reach Google OAuth endpoint', err); process.exit(1); }); req.end(); });"
+
             # Run database migrations
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml exec -T backend npx prisma migrate deploy
 
