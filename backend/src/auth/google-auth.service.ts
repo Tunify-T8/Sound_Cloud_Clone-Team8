@@ -262,6 +262,7 @@ export class GoogleAuthService {
             userId: user.id,
             provider: 'GOOGLE',
             providerUserId: googleUser.googleId,
+            accessToken: 'placeholder',
           },
         });
 
@@ -324,6 +325,7 @@ export class GoogleAuthService {
           userId: user.id,
           provider: 'GOOGLE',
           providerUserId: payload.googleId,
+          accessToken: 'placeholder',
         },
       });
     } catch (error) {
